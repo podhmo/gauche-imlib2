@@ -3,7 +3,7 @@
 ;;;
 
 (define-module graphics.imlib2
-  (export test-gauche_imlib2 ;; dummy
+  (export-all ;;slack-off
           )
   )
 (select-module graphics.imlib2)
