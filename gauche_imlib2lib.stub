@@ -79,7 +79,6 @@ typedef struct ScmImImageRec {
       (+= ,j 3))])
 
 (define-cfn data_gl_rgba (w::int h::int data::DATA32* vec::ScmU8Vector*) ::void :static
-  (puts "RGBA")
   (let* ((h_lv::int (* w (- h 1))) (index::int 0) (tmp::int 0))
     (while (< 0 h_lv)
       (dotimes (i w)
@@ -88,7 +87,6 @@ typedef struct ScmImImageRec {
       (-= h_lv w))))
 
 (define-cfn data_gl_rgb (w::int h::int data::DATA32* vec::ScmU8Vector*) ::void :static
-  (puts "RGB")
   (let* ((h_lv::int (* w (- h 1))) (index::int 0) (tmp::int 0))
     (while (< 0 h_lv)
       (dotimes (i w)
