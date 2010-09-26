@@ -9,7 +9,6 @@
 (select-module graphics.imlib2)
 
 (define (image-data-gl-pixels obj :key (alpha #f))
-  (print "this is scheme world")
   (%image-data-gl-pixels obj (if alpha 1 0)))
 
 ;; Loads extension
