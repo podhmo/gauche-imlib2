@@ -3,9 +3,53 @@
 ;;;
 
 "
+#include <Imlib2.h>
 #include \"gauche_imlib2.h\"
 "
 
+"
+typedef struct ScmImImageRec {
+   SCM_HEADER; //don't forget it.
+   int width;
+   int height;
+   int nchannels;
+   ScmString *name;
+   Imlib_Image data;
+} ScmImImage;
+"
+
+(define-cclass <im-image> :private ScmImImage* "Scm_ImImageClass" ()
+  ()
+  [printer
+   (Scm_Printf port "#<im-image %S w:%d h:%d n:%d>"
+               (-> (SCM_IM_IMAGE obj) name)
+               (-> (SCM_IM_IMAGE obj) width)
+               (-> (SCM_IM_IMAGE obj) height)
+               (-> (SCM_IM_IMAGE obj) nchannels))])
+
+(define-cfn im_image_finalize (obj data::void*) ::void :static
+  (let* ((k::ScmImImage* (SCM_IM_IMAGE obj)))
+    (imlib_context_set_image (-> k data))
+    (imlib_free_image)
+    (set! (-> k data) NULL)))
+
+(define-cproc load-image (fname::<string>)
+  (let* ((k::ScmImImage* (SCM_NEW ScmImImage))
+         (image::Imlib_Image
+;;          (imlib_load_image_without_cache (Scm_GetStringConst fname))))
+          (imlib_load_image (Scm_GetStringConst fname))))
+    (SCM_SET_CLASS k (& Scm_ImImageClass))
+    (Scm_RegisterFinalizer (SCM_OBJ k) im_image_finalize NULL)
+    (cond ((== image NULL) (result SCM_FALSE))
+          (else 
+           (imlib_context_set_image image)
+           (set! (-> k name) fname)
+           (set! (-> k width) (imlib_image_get_width))
+           (set! (-> k height) (imlib_image_get_height))
+           (set! (-> k nchannels) (imlib_image_has_alpha))
+           (set! (-> k data) image)
+           (result (SCM_OBJ k))))))
+           
 ;; The following entry is a dummy one.
 ;; Replace it for your definitions.
 
