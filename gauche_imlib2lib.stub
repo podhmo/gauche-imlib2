@@ -4,52 +4,111 @@
 
 "
 #include <Imlib2.h>
+#include <gauche/uvector.h>
 #include \"gauche_imlib2.h\"
 "
 
 "
 typedef struct ScmImImageRec {
    SCM_HEADER; //don't forget it.
-   int width;
-   int height;
-   int nchannels;
-   ScmString *name;
-   Imlib_Image data;
+   Imlib_Image pt;
 } ScmImImage;
 "
+
+(define-cfn image_has_alpha_internal () ::ScmObj :static
+  (if (== 1 (imlib_image_has_alpha))
+      (return SCM_TRUE)
+      (return SCM_FALSE)))
 
 (define-cclass <im-image> :private ScmImImage* "Scm_ImImageClass" ()
   ()
   [printer
-   (Scm_Printf port "#<im-image %S w:%d h:%d n:%d>"
-               (-> (SCM_IM_IMAGE obj) name)
-               (-> (SCM_IM_IMAGE obj) width)
-               (-> (SCM_IM_IMAGE obj) height)
-               (-> (SCM_IM_IMAGE obj) nchannels))])
+   (let* ((pt::Imlib_Image (-> (SCM_IM_IMAGE obj) pt)))
+     (imlib_context_set_image pt)
+     (Scm_Printf port "#<im-image %p w:%d h:%d %S>" 
+                 pt
+                 (imlib_image_get_width)
+                 (imlib_image_get_height)
+                 (image_has_alpha_internal)))])
+
+(define-cproc image-width (obj::<im-image>) ::<int>
+  (imlib_context_set_image (-> (SCM_IM_IMAGE obj) pt))
+  (result (imlib_image_get_width)))
+
+
+(define-cproc image-height (obj::<im-image>) ::<int>
+  (imlib_context_set_image (-> (SCM_IM_IMAGE obj) pt))
+  (result (imlib_image_get_height)))
+
+(define-cproc image-has-alpha? (obj::<im-image>) ::<boolean>
+  (imlib_context_set_image (-> (SCM_IM_IMAGE obj) pt))
+  (image_has_alpha_internal))
+
 
 (define-cfn im_image_finalize (obj data::void*) ::void :static
   (let* ((k::ScmImImage* (SCM_IM_IMAGE obj)))
-    (imlib_context_set_image (-> k data))
+    (imlib_context_set_image (-> k pt))
     (imlib_free_image)
-    (set! (-> k data) NULL)))
+    (set! (-> k pt) NULL)))
 
 (define-cproc load-image (fname::<string>)
   (let* ((k::ScmImImage* (SCM_NEW ScmImImage))
          (image::Imlib_Image
-;;          (imlib_load_image_without_cache (Scm_GetStringConst fname))))
-          (imlib_load_image (Scm_GetStringConst fname))))
+          (imlib_load_image_without_cache (Scm_GetStringConst fname))))
+;          (imlib_load_image (Scm_GetStringConst fname))))
     (SCM_SET_CLASS k (& Scm_ImImageClass))
     (Scm_RegisterFinalizer (SCM_OBJ k) im_image_finalize NULL)
     (cond ((== image NULL) (result SCM_FALSE))
-          (else 
-           (imlib_context_set_image image)
-           (set! (-> k name) fname)
-           (set! (-> k width) (imlib_image_get_width))
-           (set! (-> k height) (imlib_image_get_height))
-           (set! (-> k nchannels) (imlib_image_has_alpha))
-           (set! (-> k data) image)
+          (else
+           (set! (-> k pt) image)           
            (result (SCM_OBJ k))))))
-           
+
+(define-cise-stmt PUSH_COLOR
+  [(_ "4" vec tmp j)
+   `(begin
+      (= (aref (SCM_U8VECTOR_ELEMENTS ,vec) (+ ,j 0)) (logand (>> ,tmp 16) 0xff))
+      (= (aref (SCM_U8VECTOR_ELEMENTS ,vec) (+ ,j 1)) (logand (>> ,tmp 8) 0xff))
+      (= (aref (SCM_U8VECTOR_ELEMENTS ,vec) (+ ,j 2)) (logand ,tmp 0xff))
+      (= (aref (SCM_U8VECTOR_ELEMENTS ,vec) (+ ,j 3)) (>> ,tmp 24))
+      (+= ,j 4))]
+  [(_ "3" vec tmp j)
+   `(begin
+      (= (aref (SCM_U8VECTOR_ELEMENTS ,vec) ,j) (logand ,tmp 0xff))
+      (= (aref (SCM_U8VECTOR_ELEMENTS ,vec) (+ ,j 1)) (logand (>> ,tmp 8) 0xff))
+      (= (aref (SCM_U8VECTOR_ELEMENTS ,vec) (+ ,j 2)) (logand (>> ,tmp 16) 0xff))
+      (+= ,j 3))])
+
+(define-cfn data_gl_rgba (w::int h::int data::DATA32* vec::ScmU8Vector*) ::void :static
+  (puts "RGBA")
+  (let* ((h_lv::int (* w (- h 1))) (index::int 0) (tmp::int 0))
+    (while (< 0 h_lv)
+      (dotimes (i w)
+        (= tmp (aref data (+ h_lv i)))
+        (PUSH_COLOR "4" vec tmp index))
+      (-= h_lv w))))
+
+(define-cfn data_gl_rgb (w::int h::int data::DATA32* vec::ScmU8Vector*) ::void :static
+  (puts "RGB")
+  (let* ((h_lv::int (* w (- h 1))) (index::int 0) (tmp::int 0))
+    (while (< 0 h_lv)
+      (dotimes (i w)
+        (= tmp (aref data (+ h_lv i)))
+        (PUSH_COLOR "3" vec tmp index))
+      (-= h_lv w))))
+
+(define-cproc %image-data-gl-pixels (obj::<im-image> alpha::<fixnum>) ::<uvector>
+  (imlib_context_set_image (-> (SCM_IM_IMAGE obj) pt))
+  (let* ((w::int (imlib_image_get_width))
+         (h::int (imlib_image_get_height))
+         (data::DATA32* (imlib_image_get_data)))
+    (let* ((len::int (* w h))
+           (size::int (* (+ alpha 3) len))
+           (vec::ScmU8Vector* (SCM_U8VECTOR (Scm_MakeU8Vector size 0))))
+      (if (== alpha 1)
+          (data_gl_rgba w h data vec)
+          (data_gl_rgb w h data vec))
+      (result vec))))
+
 ;; The following entry is a dummy one.
 ;; Replace it for your definitions.
 

@@ -13,6 +13,15 @@
 (test* "test-gauche_imlib2" "gauche_imlib2 is working"
        (test-gauche_imlib2))
 
+(test-section "load-image")
+(test* "iamge file not found"  #f (load-image "images/bbbb.jpg"))
+
+(define img (load-image "images/a.jpg"))
+(print img)
+(test* "image-width" 30 (image-width img))
+(test* "image-height" 23 (image-height img))
+(test* "has-alpha?" #f (image-has-alpha? (load-image "images/a.jpg")))
+(print (load-image "images/a.jpg"))
 ;; epilogue
 (test-end)
 

@@ -1,0 +1,45 @@
+(define-cproc image-data (obj::<im-image>) ::<int>
+  (imlib_context_set_image (-> (SCM_IM_IMAGE obj) image))
+  (result (imlib_image_get_data)))
+
+
+(define-cproc gl-get-double (state::<fixnum>)
+  "int vsize = Scm_GLStateInfoSize(state);
+  if (vsize <= 0)
+    Scm_Error(\"you can't query state %x by glGetDoublev\", state);
+  if (vsize == 1) {
+    GLdouble v;
+    glGetDoublev((GLenum)state, &v);
+    SCM_RETURN(Scm_MakeFlonum(v));
+  } else {
+    ScmF64Vector *v = SCM_F64VECTOR(Scm_MakeF64Vector(vsize, 0));
+    glGetDoublev((GLenum)state, SCM_F64VECTOR_ELEMENTS(v));
+    SCM_RETURN(SCM_OBJ(v));
+  }")
+
+(define-cproc gl-get-double! (vec state::<fixnum>)
+  "int vsize;
+  if (!SCM_F64VECTORP(vec)) Scm_Error(\"s32vector required, but got %S\", vec);
+  vsize = Scm_GLStateInfoSize(state);
+  if (vsize != SCM_F64VECTOR_SIZE(vec))
+    Scm_Error(\"state %x needs a vector of size %d, but got %S\",
+               state, vsize, vec);
+  glGetDoublev((GLenum)state, SCM_F64VECTOR_ELEMENTS(vec));
+  SCM_RETURN(SCM_OBJ(vec));")
+
+ScmObj Scm_ListToU8Vector(ScmObj list, int clamp)
+{
+    int length = Scm_Length(list), i;
+    ScmUVector *vec;
+    ScmObj cp;
+
+    if (length < 0) Scm_Error("improper list not allowed: %S", list);
+    vec = (ScmUVector*)Scm_MakeU8Vector(length, 0);
+    for (i=0, cp=list; i<length; i++, cp = SCM_CDR(cp)) {
+        unsigned char elt;
+        ScmObj obj = SCM_CAR(cp);
+        elt = (u_char)Scm_GetIntegerU8Clamp(obj, clamp, NULL);
+        SCM_U8VECTOR_ELEMENTS(vec)[i] = elt;
+    }
+    return SCM_OBJ(vec);
+}

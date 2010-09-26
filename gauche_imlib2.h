@@ -8,7 +8,6 @@
 
 #include <gauche.h>
 #include <gauche/extend.h>
-#include <Imlib2.h>
 
 SCM_DECL_BEGIN
 
