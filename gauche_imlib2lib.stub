@@ -94,15 +94,14 @@ typedef struct ScmImImageRec {
         (PUSH_COLOR "3" vec tmp index))
       (-= h_lv w))))
 
-(define-cproc %image-data-gl-pixels (obj::<im-image> alpha::<fixnum>) ::<uvector>
+(define-cproc %image-data-gl-pixels (obj::<im-image> nchannels::<fixnum>) ::<uvector>
   (imlib_context_set_image (-> (SCM_IM_IMAGE obj) pt))
   (let* ((w::int (imlib_image_get_width))
          (h::int (imlib_image_get_height))
          (data::DATA32* (imlib_image_get_data)))
-    (let* ((len::int (* w h))
-           (size::int (* (+ alpha 3) len))
+    (let* ((size::int (* nchannels w h))
            (vec::ScmU8Vector* (SCM_U8VECTOR (Scm_MakeU8Vector size 0))))
-      (if (== alpha 1)
+      (if (== nchannels 4)
           (data_gl_rgba w h data vec)
           (data_gl_rgb w h data vec))
       (result vec))))

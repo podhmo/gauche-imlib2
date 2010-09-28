@@ -9,7 +9,7 @@
 (select-module graphics.imlib2)
 
 (define (image-data-gl-pixels obj :key (alpha #f))
-  (%image-data-gl-pixels obj (if alpha 1 0)))
+  (%image-data-gl-pixels obj (if alpha 4 3)))
 
 ;; Loads extension
 (dynamic-load "gauche_imlib2")
