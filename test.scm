@@ -14,6 +14,8 @@
        (test-gauche_imlib2))
 
 (test-section "load-image")
+(test* "create image" <im-image> (class-of (create-image 300 300)))
+(test* "save-image" (undefined) (save-image (create-image 100 100) "foo.jpg"))
 (test* "iamge file not found"  #f (load-image "images/bbbb.jpg"))
 
 (define img (load-image "images/a.jpg"))
