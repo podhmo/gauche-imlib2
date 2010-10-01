@@ -108,18 +108,19 @@ typedef struct ScmImImageRec {
            (result (SCM_OBJ k))))))
 
 (define-cise-stmt PUSH_COLOR
-  [(_ "4" vec tmp j)
+  [(_ "RGB" vec tmp j)
    `(begin
       (= (aref (SCM_U8VECTOR_ELEMENTS ,vec) ,j) (logand (>> ,tmp 16) 0xff))
       (= (aref (SCM_U8VECTOR_ELEMENTS ,vec) (+ ,j 1)) (logand (>> ,tmp 8) 0xff))
-      (= (aref (SCM_U8VECTOR_ELEMENTS ,vec) (+ ,j 2)) (logand ,tmp 0xff))
+      (= (aref (SCM_U8VECTOR_ELEMENTS ,vec) (+ ,j 2)) (logand ,tmp 0xff)))]
+  [(_ "4" vec tmp j)
+   `(begin
+      (PUSH_COLOR "RGB" ,vec ,tmp ,j)
       (= (aref (SCM_U8VECTOR_ELEMENTS ,vec) (+ ,j 3)) (>> ,tmp 24))
       (+= ,j 4))]
   [(_ "3" vec tmp j)
    `(begin
-      (= (aref (SCM_U8VECTOR_ELEMENTS ,vec) ,j) (logand (>> ,tmp 16) 0xff))
-      (= (aref (SCM_U8VECTOR_ELEMENTS ,vec) (+ ,j 1)) (logand (>> ,tmp 8) 0xff))
-      (= (aref (SCM_U8VECTOR_ELEMENTS ,vec) (+ ,j 2)) (logand ,tmp 0xff))
+      (PUSH_COLOR "RGB" ,vec ,tmp ,j)
       (+= ,j 3))])
 
 (define-cise-stmt PUSH_COLOR_LOOP
