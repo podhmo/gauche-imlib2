@@ -60,23 +60,32 @@ typedef struct ScmImImageRec {
 (define-cproc gl-pixels->image (data::<uvector> w::<fixnum> h::<fixnum>)
   (let* ((k::ScmImImage* (SCM_NEW ScmImImage))
          (image::Imlib_Image (imlib_create_image w h)))
-    (cond [(SCM_U32VECTORP data)
+    (cond [(SCM_U8VECTORP data)
            (imlib_context_set_image image)
+
            (let* ((dst::DATA32* (imlib_image_get_data))
-                  (h_lv::int (* (- h 1) w))
-                  (index::int 0))
-             (while (< 0 h_lv)
-               (dotimes (i w)
-                 (= (aref dst index) (aref (SCM_U32VECTOR_ELEMENTS data) (+ h_lv i)))
-                 (+= index 1))
-              (-= h_lv w)))
-           
-           (SCM_SET_CLASS k (& Scm_ImImageClass))
-           (Scm_RegisterFinalizer (SCM_OBJ k) im_image_finalize NULL)
-           (set! (-> k pt) image)           
-           (result (SCM_OBJ k))]
+                  (w4::int (* 4 w))
+                  (h_lv::int (* (- h 1) w4))
+                  (index::int 0) (val::int 0))
+             (for (h_lv (<= 0 h_lv) (-= h_lv w4))
+                  (let* ((i::int 0))
+                    (for (i (< i w4) (+= i 4))
+                         (= val (aref (SCM_U8VECTOR_ELEMENTS data) (+ h_lv i 3))) ;;A
+                         (<<= val 8)
+                         (logior= val (aref (SCM_U8VECTOR_ELEMENTS data) (+ h_lv i))) ;;R
+                         (<<= val 8)
+                         (logior= val (aref (SCM_U8VECTOR_ELEMENTS data) (+ h_lv i 1))) ;;G
+                         (<<= val 8)
+                         (logior= val (aref (SCM_U8VECTOR_ELEMENTS data) (+ h_lv i 2))) ;;B
+                         (= (aref dst index) val)
+                         (+= index 1))))
+
+             (SCM_SET_CLASS k (& Scm_ImImageClass))
+             (Scm_RegisterFinalizer (SCM_OBJ k) im_image_finalize NULL)
+             (set! (-> k pt) image)           
+             (result (SCM_OBJ k)))]
           [else
-           (Scm_Error "%S is not u32vector" data)
+           (Scm_Error "%S is not u8vector" data)
            (result SCM_FALSE)])))
 
 (define-cproc save-image (k::<im-image> name::<string>) ::<void>
@@ -87,7 +96,7 @@ typedef struct ScmImImageRec {
   (let* ((k::ScmImImage* (SCM_NEW ScmImImage))
          (image::Imlib_Image
           (imlib_load_image_without_cache (Scm_GetStringConst fname))))
-;          (imlib_load_image (Scm_GetStringConst fname))))
+                                        ;          (imlib_load_image (Scm_GetStringConst fname))))
     (SCM_SET_CLASS k (& Scm_ImImageClass))
     (Scm_RegisterFinalizer (SCM_OBJ k) im_image_finalize NULL)
     (cond ((== image NULL) (result SCM_FALSE))
@@ -123,32 +132,16 @@ typedef struct ScmImImageRec {
       (dotimes (i (* ,w ,h))
         (= __tmp (aref ,data i)) 
         (PUSH_COLOR ,nchannels ,vec __tmp __index)))])
-   
-;; (define-cfn data_gl_rgba (w::int h::int data::DATA32* vec::ScmU8Vector*) ::void :static
-;;   (let* ((h_lv::int (* w (- h 1))) (index::int 0) (tmp::int 0))
-;;     (while (< 0 h_lv)
-;;       (dotimes (i w)
-;;         (= tmp (aref data (+ h_lv i)))
-;;         (PUSH_COLOR "4" vec tmp index))
-;;       (-= h_lv w))))
-
-;; (define-cfn data_gl_rgb (w::int h::int data::DATA32* vec::ScmU8Vector*) ::void :static
-;;   (let* ((h_lv::int (* w (- h 1))) (index::int 0) (tmp::int 0))
-;;     (while (< 0 h_lv)
-;;       (dotimes (i w)
-;;         (= tmp (aref data (+ h_lv i)))
-;;         (PUSH_COLOR "3" vec tmp index))
-;;       (-= h_lv w))))
 
 (define-cfn data_gl_rgb (w::int h::int data::DATA32* vec::ScmU8Vector* type::int) ::void :static
   (if (== type 0)
-     (PUSH_COLOR_LOOP "3" "texture" w h data vec)
-     (PUSH_COLOR_LOOP "3" "pixels" w h data vec)))
+      (PUSH_COLOR_LOOP "3" "texture" w h data vec)
+      (PUSH_COLOR_LOOP "3" "pixels" w h data vec)))
 
 (define-cfn data_gl_rgba (w::int h::int data::DATA32* vec::ScmU8Vector* type::int) ::void :static
   (if (== type 0)
-     (PUSH_COLOR_LOOP "4" "texture" w h data vec)
-     (PUSH_COLOR_LOOP "4" "pixels" w h data vec)))
+      (PUSH_COLOR_LOOP "4" "texture" w h data vec)
+      (PUSH_COLOR_LOOP "4" "pixels" w h data vec)))
 
 (define-cproc %image->gl (obj::<im-image> nchannels::<fixnum> type::<fixnum>) ::<uvector>
   (imlib_context_set_image (-> (SCM_IM_IMAGE obj) pt))

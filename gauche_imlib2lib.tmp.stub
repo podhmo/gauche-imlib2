@@ -43,3 +43,4 @@ ScmObj Scm_ListToU8Vector(ScmObj list, int clamp)
     }
     return SCM_OBJ(vec);
 }
+
