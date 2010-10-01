@@ -57,7 +57,7 @@ typedef struct ScmImImageRec {
     (set! (-> k pt) image)
     (result k)))
 
-(define-cfn rgba_to_data32 (data::ScmU8Vector* w::int h::int dst::DATA32*)
+(define-cfn rgba_to_data32 (data::ScmU8Vector* w::int h::int dst::DATA32*) ::void :static
   (let* ((w4::int (* 4 w))
          (h_lv::int (* (- h 1) w4))
          (index::int 0) (val::int 0))
