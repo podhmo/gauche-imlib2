@@ -57,33 +57,36 @@ typedef struct ScmImImageRec {
     (set! (-> k pt) image)
     (result k)))
 
+(define-cfn rgba_to_data32 (data::ScmU8Vector* w::int h::int dst::DATA32*)
+  (let* ((w4::int (* 4 w))
+         (h_lv::int (* (- h 1) w4))
+         (index::int 0) (val::int 0))
+    (for (h_lv (<= 0 h_lv) (-= h_lv w4))
+         (let* ((i::int 0))
+           (for (i (< i w4) (+= i 4))
+                (= val (aref (SCM_U8VECTOR_ELEMENTS data) (+ h_lv i 3))) ;;A
+                (<<= val 8)
+                (logior= val (aref (SCM_U8VECTOR_ELEMENTS data) (+ h_lv i))) ;;R
+                (<<= val 8)
+                (logior= val (aref (SCM_U8VECTOR_ELEMENTS data) (+ h_lv i 1))) ;;G
+                (<<= val 8)
+                (logior= val (aref (SCM_U8VECTOR_ELEMENTS data) (+ h_lv i 2))) ;;B
+                (= (aref dst index) val)
+                (+= index 1))))))
+
 (define-cproc gl-pixels->image (data::<uvector> w::<fixnum> h::<fixnum>)
   (let* ((k::ScmImImage* (SCM_NEW ScmImImage))
          (image::Imlib_Image (imlib_create_image w h)))
     (cond [(SCM_U8VECTORP data)
            (imlib_context_set_image image)
 
-           (let* ((dst::DATA32* (imlib_image_get_data))
-                  (w4::int (* 4 w))
-                  (h_lv::int (* (- h 1) w4))
-                  (index::int 0) (val::int 0))
-             (for (h_lv (<= 0 h_lv) (-= h_lv w4))
-                  (let* ((i::int 0))
-                    (for (i (< i w4) (+= i 4))
-                         (= val (aref (SCM_U8VECTOR_ELEMENTS data) (+ h_lv i 3))) ;;A
-                         (<<= val 8)
-                         (logior= val (aref (SCM_U8VECTOR_ELEMENTS data) (+ h_lv i))) ;;R
-                         (<<= val 8)
-                         (logior= val (aref (SCM_U8VECTOR_ELEMENTS data) (+ h_lv i 1))) ;;G
-                         (<<= val 8)
-                         (logior= val (aref (SCM_U8VECTOR_ELEMENTS data) (+ h_lv i 2))) ;;B
-                         (= (aref dst index) val)
-                         (+= index 1))))
+           (let* ((dst::DATA32* (imlib_image_get_data)))
+             (rgba_to_data32 data w h dst))
 
              (SCM_SET_CLASS k (& Scm_ImImageClass))
              (Scm_RegisterFinalizer (SCM_OBJ k) im_image_finalize NULL)
              (set! (-> k pt) image)           
-             (result (SCM_OBJ k)))]
+             (result (SCM_OBJ k))]
           [else
            (Scm_Error "%S is not u8vector" data)
            (result SCM_FALSE)])))

@@ -26,6 +26,9 @@
 (define (image->gl-texture obj :key (alpha #f))
   (%image->gl obj (if alpha 4 3) 0))
 
+(define (gl-pixels->image data w h :key (type :rgba))
+  (cond ((equal? type :rgba) (%gl-pixels->image data w h 4))
+        (else (%gl-pixels->image data w h 3))))
 ;; Loads extension
 (dynamic-load "gauche_imlib2")
 
