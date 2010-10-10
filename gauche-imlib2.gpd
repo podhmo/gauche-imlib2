@@ -2,7 +2,7 @@
 ;; Gauche Package Description
 
 (define-gauche-package "gauche-imlib2"
-  :version "1.0"
+  :version "0.0.1"
   :gauche-version "0.9"
   :configure "./configure "
 )
