@@ -48,6 +48,7 @@ all : $(TARGET)
 
 gauche_imlib2.$(SOEXT): $(gauche_imlib2_SRCS)
 	$(GAUCHE_PACKAGE) compile \
+	  --libs="`imlib2-config --libs`" --cflags="`imlib2-config --cflags`" \
 	  --local=$(LOCAL_PATHS) --verbose gauche_imlib2 $(gauche_imlib2_SRCS)
 
 check : all
